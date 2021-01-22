@@ -19,9 +19,11 @@ const groupeSchema = mongoose.Schema({
     total:Number,
     refunder: [{
         userQuiAMoinsPaye:User.schema,
-        amount:Number,
-        userArembourser:User.schema
+        usersArembourser:[{
+            amount:Number,
+            user:User.schema
         }]
+    }]
     // Tableau de montant/user permetant de savoir qui doit combien à qui
     // Si on ne doit rien, notre montant est à 0.
     // Si on doit quelque chose, le montant augmente.

@@ -72,7 +72,23 @@ router.route("/groupeRoutes/addingTransaction")
 
                 // TODO: faire en sorte d'update la dette au lieu de créer un nouveau fichier avec les memes infos où l'amount differe.
                 // Met à jour les dettes.
-                const nbPersonneGroupe = groupe.users.length;
+                miseAJourDettes(groupe);
+
+
+                callback(null, groupe);
+            }
+
+        ],function(err, result){
+            if(err){
+                console.log(err);
+            }
+            return res.json(result);
+        })
+    });
+
+
+    function miseAJourDettes(groupe){
+        const nbPersonneGroupe = groupe.users.length;
                 const total = groupe.total;
 
                 const tabUtilQuiDoiventRembouser = [];
@@ -90,40 +106,48 @@ router.route("/groupeRoutes/addingTransaction")
                 }
 
                 const nbUserEnDessous = tabUtilQuiDoiventRembouser.length;
+                const tabUserARembourser = [];
+
 
                 for (const userM of tabUtilQuiDoiventRembouser) {
+                    // Pour chaque personne étant dans le cas d'une personne n'ayant pas payé assez, on parcour tout ceux qui ont payé plus.
+                    // On aura un tabUser (les personnes que la personne userM devra rembourser) par personne.
+                    const tabUser = [];
 
-                    for (const userP of tabUtilAuDessusDeMoyenne ) {
-                        
+                    for (const userP of tabUtilAuDessusDeMoyenne) {
+                        //Pour chaque personne qui ont payé en plus on récupère les sous que l'on va devoir à chacune de ces personnes.
                         const result = calculRemboursement(userP.total, total, nbUserEnDessous, userM.total, moyenneApayer);
-                        const tab = {userQuiAMoinsPaye: userM.user, amount: result, userArembourser: userP.user};
-                        
-                        if(groupe.refunder.length == 0){
-                            console.log("par ici");
-                            groupe.refunder.push(tab);
-                        }else{
-                            for (var userRefunder of groupe.refunder) {
+                        const tab = {amount:result,user:userP.user};
+                        tabUser.push(tab);
+                    }
+                    // Set pour ajouter à la partie refunder.
+                    const tabUserPayer = {userQuiAMoinsPaye:userM.user, usersArembourser:tabUser};
 
-                                if(userRefunder.userQuiAMoinsPaye.id == userM.user.id){
-                                    Object.assign(userRefunder,tab);
-                                }else{
-                                    groupe.refunder.push(tab);
-                                }
+                    if(groupe.refunder.length == 0){
+                        // Si il n'existe pas d'element dans refunder on lui met le tab par défaut.
+                        groupe.refunder.push(tabUserPayer);
+                    }
+                    else{
+                        // Si il existe un element on verifie si pour l'utilisateur qui doit rembourser il existe déjà dans le tableau
+                        var etat = false;
+                        for (const refunder of groupe.refunder) {
+                            if(refunder.userQuiAMoinsPaye.id === userM.user.id){
+                                console.log("Je passe dans le user qui existe deja");
+                                etat = true;
                             }
                         }
-                    }        
+                        if(etat == true){
+                            console.log("ça passe la");
+                            Groupe.model.updateOne({'refunder.userQuiAMoinsPaye.id':userM.user.id}, {'refunder':tabUserPayer});
+                        }else{
+                            console.log("ça passe ici");
+                            groupe.refunder.push(tabUserPayer);
+                        }
+                    }
                 }
-                groupe.save();
-                callback(null, groupe);
-            }
 
-        ],function(err, result){
-            if(err){
-                console.log(err);
-            }
-            return res.json(result);
-        })
-    });
+                groupe.save();
+    }
 
     function calculRemboursement(valeurAuDessus, total, nbPersonneEnDessous, valeurAuDessous, moyenne){
 
