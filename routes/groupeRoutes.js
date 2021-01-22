@@ -71,7 +71,7 @@ router.route("/groupeRoutes/addingTransaction")
                 // Permet de préparer le calcul pour chaque utilisateur du groupe qui sont en dessous de ce qu'ils ont à payer.
 
                 // TODO: faire en sorte d'update la dette au lieu de créer un nouveau fichier avec les memes infos où l'amount differe.
-
+                // Met à jour les dettes.
                 const nbPersonneGroupe = groupe.users.length;
                 const total = groupe.total;
 
@@ -94,9 +94,23 @@ router.route("/groupeRoutes/addingTransaction")
                 for (const userM of tabUtilQuiDoiventRembouser) {
 
                     for (const userP of tabUtilAuDessusDeMoyenne ) {
+                        
                         const result = calculRemboursement(userP.total, total, nbUserEnDessous, userM.total, moyenneApayer);
                         const tab = {userQuiAMoinsPaye: userM.user, amount: result, userArembourser: userP.user};
-                        groupe.refunder.push(tab);
+                        
+                        if(groupe.refunder.length == 0){
+                            console.log("par ici");
+                            groupe.refunder.push(tab);
+                        }else{
+                            for (var userRefunder of groupe.refunder) {
+
+                                if(userRefunder.userQuiAMoinsPaye.id == userM.user.id){
+                                    Object.assign(userRefunder,tab);
+                                }else{
+                                    groupe.refunder.push(tab);
+                                }
+                            }
+                        }
                     }        
                 }
                 groupe.save();
